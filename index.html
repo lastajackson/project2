@@ -10,7 +10,12 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1>🚀 CRASH GAME</h1>
+            <div class="header-top">
+                <h1>🚀 CRASH GAME</h1>
+                <div class="header-controls">
+                    <button id="soundBtn" class="control-btn active" title="Toggle Sound" onclick="toggleSound()">🔊</button>
+                </div>
+            </div>
             <div class="header-stats">
                 <div class="stat-box">
                     <span class="stat-label">Balance</span>
@@ -22,7 +27,11 @@
                 </div>
                 <div class="stat-box">
                     <span class="stat-label">Total Loss</span>
-                    <span class="stat-value" id="totalLoss">$0.00</span>
+                    <span class="stat-value" id="totalLost">$0.00</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Round</span>
+                    <span class="stat-value" id="roundNumber">0</span>
                 </div>
             </div>
         </header>
@@ -65,6 +74,14 @@
                     </select>
                 </div>
 
+                <div class="auto-play-section">
+                    <label>Auto-Play</label>
+                    <div class="auto-play-controls">
+                        <input type="number" id="autoPlayRounds" min="1" max="100" value="5" placeholder="Rounds">
+                        <button id="autoPlayBtn" class="btn-auto-play" onclick="toggleAutoPlay()">▶ Auto Play</button>
+                    </div>
+                </div>
+
                 <button id="placeBetBtn" class="btn-primary" onclick="placeBet()">PLACE BET</button>
                 <button id="cashoutBtn" class="btn-secondary" onclick="cashout()" style="display: none;">CASH OUT</button>
                 
@@ -100,15 +117,15 @@
                 </div>
             </div>
 
-            <!-- Right Panel - History -->
+            <!-- Right Panel - History & Achievements -->
             <div class="history-panel">
-                <h2>Recent Games</h2>
+                <h2>📊 Recent Games</h2>
                 <div class="history-list" id="historyList">
                     <div class="history-empty">No games yet</div>
                 </div>
 
                 <div class="stats-section">
-                    <h3>Statistics</h3>
+                    <h3>📈 Statistics</h3>
                     <div class="stat-item">
                         <span>Games Played</span>
                         <span id="gamesPlayed">0</span>
@@ -124,6 +141,25 @@
                     <div class="stat-item">
                         <span>Best Multiplier</span>
                         <span id="bestMultiplier">0.00x</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Current Streak</span>
+                        <span id="winStreak">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Best Streak</span>
+                        <span id="maxWinStreak">0</span>
+                    </div>
+                </div>
+
+                <div class="achievements-section">
+                    <h3>🏆 Achievements</h3>
+                    <div class="achievements-container" id="achievementsContainer">
+                        <div class="achievement locked">🎯 First Win</div>
+                        <div class="achievement locked">💰 High Roller</div>
+                        <div class="achievement locked">🔥 On Fire</div>
+                        <div class="achievement locked">📈 X10 Club</div>
+                        <div class="achievement locked">💪 Comeback</div>
                     </div>
                 </div>
 
