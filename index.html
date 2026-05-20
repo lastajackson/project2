@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Crash Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🚀 CRASH GAME</h1>
+            <div class="header-stats">
+                <div class="stat-box">
+                    <span class="stat-label">Balance</span>
+                    <span class="stat-value" id="balance">$1000.00</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Total Won</span>
+                    <span class="stat-value" id="totalWon">$0.00</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-label">Total Loss</span>
+                    <span class="stat-value" id="totalLoss">$0.00</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Game Area -->
+        <div class="game-wrapper">
+            <!-- Left Panel - Betting -->
+            <div class="betting-panel">
+                <h2>Place Your Bet</h2>
+                
+                <div class="bet-input-group">
+                    <label>Bet Amount</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="betAmount" min="1" max="10000" value="100" step="10">
+                        <span class="currency">$</span>
+                    </div>
+                </div>
+
+                <div class="quick-bets">
+                    <button class="quick-bet-btn" onclick="setBetAmount(50)">$50</button>
+                    <button class="quick-bet-btn" onclick="setBetAmount(100)">$100</button>
+                    <button class="quick-bet-btn" onclick="setBetAmount(500)">$500</button>
+                    <button class="quick-bet-btn" onclick="setBetAmount(1000)">$1000</button>
+                </div>
+
+                <div class="multiplier-input-group">
+                    <label>Auto Cashout (Optional)</label>
+                    <div class="input-wrapper">
+                        <input type="number" id="autoCashout" min="1.01" max="999" value="2.5" step="0.05" placeholder="e.g., 2.5x">
+                        <span class="multiplier-label">x</span>
+                    </div>
+                </div>
+
+                <div class="difficulty-selector">
+                    <label>Difficulty</label>
+                    <select id="difficulty">
+                        <option value="easy">Easy (Crashes often)</option>
+                        <option value="medium" selected>Medium (Balanced)</option>
+                        <option value="hard">Hard (Long runs)</option>
+                    </select>
+                </div>
+
+                <button id="placeBetBtn" class="btn-primary" onclick="placeBet()">PLACE BET</button>
+                <button id="cashoutBtn" class="btn-secondary" onclick="cashout()" style="display: none;">CASH OUT</button>
+                
+                <div class="bet-info">
+                    <p id="betStatus"></p>
+                </div>
+            </div>
+
+            <!-- Center - Game Display -->
+            <div class="game-display">
+                <div class="game-header">
+                    <span class="game-status" id="gameStatus">WAITING FOR BET</span>
+                </div>
+
+                <div class="crash-graph">
+                    <canvas id="crashCanvas"></canvas>
+                </div>
+
+                <div class="multiplier-display">
+                    <span id="currentMultiplier" class="multiplier-value">0.00x</span>
+                    <span id="crashMessage" class="crash-message"></span>
+                </div>
+
+                <div class="game-info">
+                    <div class="info-box">
+                        <span class="info-label">Potential Win</span>
+                        <span class="info-value" id="potentialWin">$0.00</span>
+                    </div>
+                    <div class="info-box">
+                        <span class="info-label">Crash at</span>
+                        <span class="info-value" id="crashAt">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - History -->
+            <div class="history-panel">
+                <h2>Recent Games</h2>
+                <div class="history-list" id="historyList">
+                    <div class="history-empty">No games yet</div>
+                </div>
+
+                <div class="stats-section">
+                    <h3>Statistics</h3>
+                    <div class="stat-item">
+                        <span>Games Played</span>
+                        <span id="gamesPlayed">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Win Rate</span>
+                        <span id="winRate">0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Avg Multiplier</span>
+                        <span id="avgMultiplier">0.00x</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Best Multiplier</span>
+                        <span id="bestMultiplier">0.00x</span>
+                    </div>
+                </div>
+
+                <button class="btn-reset" onclick="resetStats()">Reset Stats</button>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="notification-container" id="notificationContainer"></div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
