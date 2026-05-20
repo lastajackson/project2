@@ -1,4 +1,4 @@
-// Game State
+// Advanced Game State
 let gameState = {
     balance: localStorage.getItem('balance') ? parseFloat(localStorage.getItem('balance')) : 1000,
     currentBet: 0,
@@ -14,8 +14,20 @@ let gameState = {
         totalWon: 0,
         totalLost: 0,
         bestMultiplier: 0,
-        allMultipliers: []
-    }
+        allMultipliers: [],
+        winStreak: 0,
+        maxWinStreak: 0,
+        loseStreak: 0
+    },
+    gameSequence: [],
+    volatility: 1,
+    roundNumber: 0,
+    cumulativeWinnings: 0,
+    achievements: localStorage.getItem('achievements') ? JSON.parse(localStorage.getItem('achievements')) : {},
+    soundEnabled: true,
+    autoPlayEnabled: false,
+    autoPlayRounds: 0,
+    autoPlayRoundsLeft: 0
 };
 
 // Canvas Setup
@@ -34,11 +46,53 @@ window.addEventListener('resize', resizeCanvas);
 // Initialize on page load
 window.addEventListener('load', () => {
     updateDisplay();
+    checkAndAwardAchievements();
 });
+
+// Sound Effects (Simple Web Audio API)
+function playSound(type) {
+    if (!gameState.soundEnabled) return;
+    
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        switch(type) {
+            case 'win':
+                oscillator.frequency.value = 800;
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                break;
+            case 'crash':
+                oscillator.frequency.value = 200;
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+                break;
+            case 'click':
+                oscillator.frequency.value = 600;
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+                break;
+        }
+    } catch(e) {
+        // Audio context not available
+    }
+}
 
 // Utility Functions
 function setBetAmount(amount) {
     document.getElementById('betAmount').value = amount;
+    playSound('click');
 }
 
 function showNotification(message, type = 'info') {
@@ -56,9 +110,10 @@ function showNotification(message, type = 'info') {
 function updateDisplay() {
     document.getElementById('balance').textContent = `$${gameState.balance.toFixed(2)}`;
     document.getElementById('totalWon').textContent = `$${gameState.stats.totalWon.toFixed(2)}`;
-    document.getElementById('totalLost').textContent = `$${gameState.stats.totalLost.toFixed(2)}`;
+    document.getElementById('totalLoss').textContent = `$${gameState.stats.totalLost.toFixed(2)}`;
     updateStats();
     updateHistory();
+    updateAchievements();
 }
 
 function updateStats() {
@@ -75,6 +130,16 @@ function updateStats() {
     document.getElementById('avgMultiplier').textContent = `${avgMultiplier}x`;
     
     document.getElementById('bestMultiplier').textContent = `${gameState.stats.bestMultiplier.toFixed(2)}x`;
+    
+    // Update win/lose streaks if they exist
+    const winStreakEl = document.getElementById('winStreak');
+    if (winStreakEl) {
+        winStreakEl.textContent = gameState.stats.winStreak;
+    }
+    const maxStreakEl = document.getElementById('maxWinStreak');
+    if (maxStreakEl) {
+        maxStreakEl.textContent = gameState.stats.maxWinStreak;
+    }
 }
 
 function updateHistory() {
@@ -103,34 +168,57 @@ function updateHistory() {
         .join('');
 }
 
-// Crash Calculation
+function updateAchievements() {
+    const achievementsContainer = document.getElementById('achievementsContainer');
+    if (!achievementsContainer) return;
+    
+    let html = '';
+    const allAchievements = {
+        'first_win': { name: '🎯 First Win', unlocked: gameState.achievements.first_win },
+        'high_roller': { name: '💰 High Roller', unlocked: gameState.achievements.high_roller },
+        'win_streak_5': { name: '🔥 On Fire', unlocked: gameState.achievements.win_streak_5 },
+        'best_multiplier_10': { name: '📈 X10 Club', unlocked: gameState.achievements.best_multiplier_10 },
+        'bankruptcy_recovery': { name: '💪 Comeback', unlocked: gameState.achievements.bankruptcy_recovery }
+    };
+    
+    for (const [key, ach] of Object.entries(allAchievements)) {
+        html += `<div class="achievement ${ach.unlocked ? 'unlocked' : 'locked'}" title="${ach.name}">
+            ${ach.name}
+        </div>`;
+    }
+    
+    achievementsContainer.innerHTML = html;
+}
+
+// Advanced Crash Calculation with Volatility
 function calculateCrashPoint(difficulty) {
     let baseCrash;
+    gameState.volatility = 1 + (Math.random() * 0.3);
     
     switch(difficulty) {
         case 'easy':
-            baseCrash = 1.3 + Math.random() * 1.5;
+            baseCrash = (1.3 + Math.random() * 1.5) * gameState.volatility;
             break;
         case 'medium':
-            baseCrash = 2 + Math.random() * 4;
+            baseCrash = (2 + Math.random() * 4) * gameState.volatility;
             break;
         case 'hard':
-            baseCrash = 3 + Math.random() * 8;
+            baseCrash = (3 + Math.random() * 8) * gameState.volatility;
             break;
         default:
-            baseCrash = 2 + Math.random() * 4;
+            baseCrash = (2 + Math.random() * 4) * gameState.volatility;
     }
     
-    return Math.max(1.01, baseCrash);
+    return Math.max(1.01, Math.round(baseCrash * 100) / 100);
 }
 
-// Multiplier Calculation
+// Multiplier Calculation with smooth exponential growth
 function calculateMultiplier(elapsedTime) {
     const multiplier = 1 + Math.pow(2, elapsedTime * 0.004) - 1;
     return Math.max(1, multiplier);
 }
 
-// Canvas Drawing
+// Advanced Canvas Drawing with animations
 function drawGraph() {
     if (!gameState.gameActive) return;
 
@@ -140,8 +228,11 @@ function drawGraph() {
     const graphWidth = width - padding * 2;
     const graphHeight = height - padding * 2;
 
-    // Clear canvas
-    ctx.fillStyle = 'rgba(10, 14, 39, 0.5)';
+    // Clear canvas with gradient
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, 'rgba(10, 14, 39, 0.8)');
+    gradient.addColorStop(1, 'rgba(20, 30, 60, 0.8)');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
     // Draw grid
@@ -177,15 +268,22 @@ function drawGraph() {
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // Draw crash label
+        // Draw crash label with glow effect
+        ctx.shadowColor = 'rgba(255, 107, 107, 0.5)';
+        ctx.shadowBlur = 10;
         ctx.fillStyle = 'rgba(255, 107, 107, 0.7)';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'center';
         ctx.fillText(`CRASH: ${gameState.crashPoint.toFixed(2)}x`, crashX, padding - 10);
+        ctx.shadowColor = 'transparent';
     }
 
-    // Draw curve
-    ctx.strokeStyle = 'rgb(0, 212, 255)';
+    // Draw curve with gradient
+    const curveGradient = ctx.createLinearGradient(padding, 0, width - padding, 0);
+    curveGradient.addColorStop(0, 'rgb(0, 212, 255)');
+    curveGradient.addColorStop(1, 'rgb(0, 150, 255)');
+    
+    ctx.strokeStyle = curveGradient;
     ctx.lineWidth = 3;
     ctx.beginPath();
 
@@ -202,7 +300,7 @@ function drawGraph() {
 
     ctx.stroke();
 
-    // Draw current position
+    // Draw current position with pulse effect
     const elapsedTime = Date.now() - gameState.gameStartTime;
     const currentMult = calculateMultiplier(elapsedTime);
     
@@ -210,10 +308,20 @@ function drawGraph() {
         const dotX = padding + (currentMult / 20) * graphWidth;
         const dotY = height - padding - (currentMult / 20) * graphHeight;
 
-        ctx.fillStyle = 'rgb(81, 207, 102)';
+        // Pulse effect
+        const pulse = Math.sin(Date.now() / 200) * 0.5 + 1;
+        
+        ctx.fillStyle = `rgba(81, 207, 102, ${0.5 + pulse * 0.2})`;
         ctx.beginPath();
-        ctx.arc(dotX, dotY, 6, 0, Math.PI * 2);
+        ctx.arc(dotX, dotY, 6 * pulse, 0, Math.PI * 2);
         ctx.fill();
+        
+        // Outer circle
+        ctx.strokeStyle = 'rgba(81, 207, 102, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, 10 + pulse * 2, 0, Math.PI * 2);
+        ctx.stroke();
     }
 }
 
@@ -246,6 +354,7 @@ function placeBet() {
     gameState.crashPoint = calculateCrashPoint(difficulty);
     gameState.autoCashoutPoint = autoCashout;
     gameState.currentMultiplier = 1;
+    gameState.roundNumber++;
 
     // Update UI
     document.getElementById('placeBetBtn').style.display = 'none';
@@ -260,7 +369,7 @@ function placeBet() {
         btn.disabled = true;
     });
 
-    showNotification(`Game started! Betting $${betAmount.toFixed(2)}`, 'warning');
+    showNotification(`Round ${gameState.roundNumber} started! Betting $${betAmount.toFixed(2)}`, 'warning');
     updateDisplay();
     gameLoop();
 }
@@ -296,9 +405,11 @@ function cashout() {
     if (!gameState.gameActive) return;
 
     gameState.gameActive = false;
+    playSound('win');
 
     const winAmount = gameState.currentBet * gameState.currentMultiplier;
     gameState.balance += winAmount;
+    gameState.cumulativeWinnings += (winAmount - gameState.currentBet);
 
     // Record game
     gameState.gameHistory.push({
@@ -314,27 +425,33 @@ function cashout() {
     gameState.stats.gamesWon++;
     gameState.stats.totalWon += (winAmount - gameState.currentBet);
     gameState.stats.allMultipliers.push(gameState.currentMultiplier);
+    gameState.stats.winStreak = (gameState.stats.winStreak || 0) + 1;
+    gameState.stats.loseStreak = 0;
+    
+    if (gameState.stats.winStreak > (gameState.stats.maxWinStreak || 0)) {
+        gameState.stats.maxWinStreak = gameState.stats.winStreak;
+    }
     
     if (gameState.currentMultiplier > gameState.stats.bestMultiplier) {
         gameState.stats.bestMultiplier = gameState.currentMultiplier;
     }
 
     // Save data
-    localStorage.setItem('balance', gameState.balance);
-    localStorage.setItem('gameHistory', JSON.stringify(gameState.gameHistory));
-    localStorage.setItem('stats', JSON.stringify(gameState.stats));
+    saveGameState();
 
     // Update UI
-    document.getElementById('crashMessage').textContent = 'CASHED OUT!';
+    document.getElementById('crashMessage').textContent = '✅ CASHED OUT!';
     document.getElementById('currentMultiplier').classList.remove('crashed');
     
     showNotification(`✅ Won $${(winAmount - gameState.currentBet).toFixed(2)}!`, 'success');
     
+    checkAndAwardAchievements();
     endGame();
 }
 
 function crash() {
     gameState.gameActive = false;
+    playSound('crash');
 
     // Record game
     gameState.gameHistory.push({
@@ -349,15 +466,15 @@ function crash() {
     gameState.stats.gamesPlayed++;
     gameState.stats.totalLost += gameState.currentBet;
     gameState.stats.allMultipliers.push(gameState.currentMultiplier);
+    gameState.stats.winStreak = 0;
+    gameState.stats.loseStreak = (gameState.stats.loseStreak || 0) + 1;
 
     if (gameState.currentMultiplier > gameState.stats.bestMultiplier) {
         gameState.stats.bestMultiplier = gameState.currentMultiplier;
     }
 
     // Save data
-    localStorage.setItem('balance', gameState.balance);
-    localStorage.setItem('gameHistory', JSON.stringify(gameState.gameHistory));
-    localStorage.setItem('stats', JSON.stringify(gameState.stats));
+    saveGameState();
 
     // Update UI
     document.getElementById('crashMessage').textContent = '💥 CRASHED!';
@@ -365,6 +482,7 @@ function crash() {
     
     showNotification(`❌ Lost $${gameState.currentBet.toFixed(2)}!`, 'error');
     
+    checkAndAwardAchievements();
     endGame();
 }
 
@@ -385,6 +503,86 @@ function endGame() {
     
     // Draw final graph
     drawGraph();
+    
+    // Auto-play next round if enabled
+    if (gameState.autoPlayEnabled && gameState.autoPlayRoundsLeft > 0) {
+        gameState.autoPlayRoundsLeft--;
+        setTimeout(() => {
+            placeBet();
+        }, 2000);
+    }
+}
+
+// Achievement System
+function checkAndAwardAchievements() {
+    // First Win
+    if (gameState.stats.gamesWon === 1 && !gameState.achievements.first_win) {
+        gameState.achievements.first_win = true;
+        showNotification('🎯 Achievement Unlocked: First Win!', 'success');
+    }
+    
+    // High Roller (bet over $500)
+    if (gameState.currentBet >= 500 && !gameState.achievements.high_roller) {
+        gameState.achievements.high_roller = true;
+        showNotification('💰 Achievement Unlocked: High Roller!', 'success');
+    }
+    
+    // Win Streak of 5
+    if (gameState.stats.winStreak === 5 && !gameState.achievements.win_streak_5) {
+        gameState.achievements.win_streak_5 = true;
+        showNotification('🔥 Achievement Unlocked: On Fire!', 'success');
+    }
+    
+    // Reach 10x multiplier
+    if (gameState.currentMultiplier >= 10 && !gameState.achievements.best_multiplier_10) {
+        gameState.achievements.best_multiplier_10 = true;
+        showNotification('📈 Achievement Unlocked: X10 Club!', 'success');
+    }
+    
+    // Comeback from near bankruptcy
+    if (gameState.balance < 100 && gameState.cumulativeWinnings > 200 && !gameState.achievements.bankruptcy_recovery) {
+        gameState.achievements.bankruptcy_recovery = true;
+        showNotification('💪 Achievement Unlocked: Comeback!', 'success');
+    }
+    
+    saveGameState();
+}
+
+// Save Game State
+function saveGameState() {
+    localStorage.setItem('balance', gameState.balance);
+    localStorage.setItem('gameHistory', JSON.stringify(gameState.gameHistory));
+    localStorage.setItem('stats', JSON.stringify(gameState.stats));
+    localStorage.setItem('achievements', JSON.stringify(gameState.achievements));
+}
+
+// Auto-Play Feature
+function toggleAutoPlay() {
+    const autoPlayBtn = document.getElementById('autoPlayBtn');
+    const autoPlayRoundsInput = document.getElementById('autoPlayRounds');
+    
+    if (!autoPlayBtn) return;
+    
+    gameState.autoPlayEnabled = !gameState.autoPlayEnabled;
+    autoPlayBtn.classList.toggle('active', gameState.autoPlayEnabled);
+    
+    if (gameState.autoPlayEnabled) {
+        const rounds = parseInt(autoPlayRoundsInput?.value) || 5;
+        gameState.autoPlayRoundsLeft = rounds;
+        showNotification(`Auto-play enabled for ${rounds} rounds`, 'info');
+    } else {
+        showNotification('Auto-play disabled', 'info');
+    }
+}
+
+// Sound Toggle
+function toggleSound() {
+    gameState.soundEnabled = !gameState.soundEnabled;
+    const soundBtn = document.getElementById('soundBtn');
+    if (soundBtn) {
+        soundBtn.classList.toggle('active', gameState.soundEnabled);
+    }
+    showNotification(`Sound ${gameState.soundEnabled ? 'enabled' : 'disabled'}`, 'info');
 }
 
 function resetStats() {
@@ -397,13 +595,16 @@ function resetStats() {
             totalWon: 0,
             totalLost: 0,
             bestMultiplier: 0,
-            allMultipliers: []
+            allMultipliers: [],
+            winStreak: 0,
+            maxWinStreak: 0,
+            loseStreak: 0
         };
+        gameState.achievements = {};
+        gameState.cumulativeWinnings = 0;
+        gameState.roundNumber = 0;
 
-        localStorage.setItem('balance', gameState.balance);
-        localStorage.setItem('gameHistory', JSON.stringify(gameState.gameHistory));
-        localStorage.setItem('stats', JSON.stringify(gameState.stats));
-
+        saveGameState();
         updateDisplay();
         showNotification('Stats reset successfully!', 'success');
     }
